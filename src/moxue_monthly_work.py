@@ -8,7 +8,6 @@ key = "moxue"
 folder_path = rf"D:\monthly\{key}"
 filter_key = "墨雪官方旗舰店"
 output_filename = f"{filter_key}：{(datetime.now() - timedelta(days=30)).month}月1日-{datetime.now().month}月1日.xlsx"
-# output_filename = f"{filter_key}：{datetime.now().month}月1日-{datetime.now().month}月19日.xlsx"
 
 def _get_fils() -> list:
     """

@@ -1,17 +1,20 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 import math
+from datetime import datetime, timedelta
 
 import pandas as pd
 from pandas import DataFrame
 
 key = "hexi"
 folder_path = fr"D:\monthly\{key}"
-# filter_key = "赫系官方旗舰店星品"
-filter_key = "赫系官方旗舰店"
+filter_key = "赫系官方旗舰店星品"
+# filter_key = "赫系官方旗舰店"
+# filter_key = '赫系护发精选'
 # output_filename = f"{filter_key}：{(datetime.now() - timedelta(days=30)).month}月1日-{datetime.now().month}月1日.xlsx"
-output_filename = "旗舰店.xlsx"
-# output_filename = "星品.xlsx"
+# output_filename = "旗舰店.xlsx"
+output_filename = "星品.xlsx"
+# output_filename = "赫系护发精选.xlsx"
 chunk_size = 50000
 max_rows_per_sheet = 65000  # 每个工作表的最大行数
 
