@@ -5,6 +5,7 @@
 
 """
 import enum
+import os
 import os.path
 
 import requests
@@ -18,6 +19,10 @@ class FileType(enum.Enum):
     XLS = 'xls'
     PPT = 'ppt'
     STREAM = 'stream'
+
+
+# 文件大小限制：30 MB
+MAX_FILE_SIZE = 30 * 1024 * 1024  # 30 MB in bytes
 
 
 def upload_file(
@@ -37,7 +42,7 @@ def upload_file(
     :param duration: 文件的时长（视频、音频），单位：毫秒。不传值时无法显示文件的具体时长。
     :param file_name: 带后缀的文件名, file为str是为none，会默认取路径名；file为bytes时必传
     :return:
-    :raises: FileNotFoundError,TypeError
+    :raises: FileNotFoundError, TypeError, ValueError
     """
     payload = {'file_type': file_type.value}
     if duration:
@@ -48,11 +53,25 @@ def upload_file(
     if isinstance(file, str):
         if not (os.path.exists(file) and os.path.isfile(file)):
             raise FileNotFoundError(f'文件不存在: {file}')
-        else:
-            files = [('file', ('file', open(file, 'rb'), 'application/octet-stream'))]
-            if file_name is None:
-                payload['file_name'] = os.path.basename(file)
+        
+        # 检查文件大小和空文件
+        file_size = os.path.getsize(file)
+        if file_size == 0:
+            raise ValueError(f'不允许上传空文件: {file}')
+        if file_size > MAX_FILE_SIZE:
+            raise ValueError(f'文件大小超过限制（30 MB）: {file}，当前大小: {file_size / (1024 * 1024):.2f} MB')
+        
+        files = [('file', ('file', open(file, 'rb'), 'application/octet-stream'))]
+        if file_name is None:
+            payload['file_name'] = os.path.basename(file)
     elif isinstance(file, bytes):
+        # 检查文件大小和空文件
+        file_size = len(file)
+        if file_size == 0:
+            raise ValueError('不允许上传空文件')
+        if file_size > MAX_FILE_SIZE:
+            raise ValueError(f'文件大小超过限制（30 MB），当前大小: {file_size / (1024 * 1024):.2f} MB')
+        
         files = [('file', ('file', file, 'application/octet-stream'))]
         if file_name:
             payload['file_name'] = file_name

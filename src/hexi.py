@@ -85,30 +85,6 @@ def _process_file_multi_filter(file_path: str, filter_keys: Set[str]) -> Dict[st
     return dict(result)
 
 
-def _process_file(file_path: str, filter_key: str) -> DataFrame:
-    """
-    处理单个文件，返回筛选之后的DataFrame（保留向后兼容）
-    :param file_path: 文件路径
-    :param filter_key: 过滤关键词
-    :return: 筛选后的DataFrame（如果无匹配数据则返回空DataFrame）
-    """
-    filtered_chunks = []
-    try:
-        for chunk in pd.read_csv(file_path, chunksize=chunk_size):
-            filtered_chunk = chunk[chunk["达人昵称"] == filter_key]
-            if len(filtered_chunk) > 0:
-                print(f"[{filter_key}] 已读取：{os.path.basename(file_path)}, 行：{len(filtered_chunk)}")
-                filtered_chunks.append(filtered_chunk)
-    except Exception as e:
-        print(f"[{filter_key}] 读取文件失败 {os.path.basename(file_path)}: {e}")
-        return pd.DataFrame()
-    
-    if not filtered_chunks:
-        return pd.DataFrame()
-    
-    return pd.concat(filtered_chunks, axis=0, ignore_index=True)
-
-
 def _get_feishu_token() -> str:
     """
     获取飞书tenant_access_token
@@ -202,9 +178,17 @@ def _delete_exported_excel_files() -> None:
 def _send_file_to_feishu(file_path: str, filter_key: str) -> bool:
     """
     上传文件到飞书并发送到群聊，发送成功后移动CSV文件到历史文件夹
+    
+    注意：函数内部会捕获所有异常并返回 False，不会向上抛出异常。
+    可能遇到的错误情况包括：
+    - FileNotFoundError: 文件不存在或配置文件不存在
+    - ValueError: 文件为空或超过大小限制（30 MB）
+    - TypeError: 参数类型错误
+    - Exception: 其他异常（如获取token失败、重试次数过多、网络异常等）
+    
     :param file_path: 文件路径
     :param filter_key: 过滤关键词（用于日志）
-    :return: 是否成功
+    :return: 是否成功，失败时返回 False 并打印错误信息
     """
     try:
         # 获取配置
@@ -294,61 +278,6 @@ def _merge_and_save(filter_key: str, output_filename: str, all_chunks: List[List
     
     final_df = pd.concat(chunks_to_concat, axis=0, ignore_index=True)
     
-    # 分割DataFrame到多个工作表
-    sheets = split_dataframe_to_sheets(final_df, max_rows_per_sheet)
-    if not sheets:
-        print(f"[{filter_key}] 警告: 工作表为空，跳过导出")
-        return
-
-    # 输出路径
-    output_path = os.path.join(os.path.dirname(folder_path), output_filename)
-
-    # 写入Excel文件（多个工作表）
-    try:
-        with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-            for sheet_name, sheet_data in sheets.items():
-                sheet_data.to_excel(writer, sheet_name=sheet_name, index=False)
-                print(f"[{filter_key}] 已写入工作表: {sheet_name}, 行数: {len(sheet_data)}")
-        
-        print(f"[{filter_key}] 执行完成，文件已保存到: {output_path}，总行数: {len(final_df)}")
-        
-        # 自动发送文件到飞书群聊
-        _send_file_to_feishu(output_path, filter_key)
-        
-    except Exception as e:
-        print(f"[{filter_key}] 写入Excel文件失败: {e}")
-        raise
-
-
-def do_merge(filter_key: str, output_filename: str) -> None:
-    """
-    进行预处理之后进行合并，并将结果分割成多个工作表保存到一个Excel文件
-    :param filter_key: 过滤关键词
-    :param output_filename: 输出文件名
-    :return:
-    """
-    # 获取所有CSV文件路径
-    try:
-        file_paths = _get_csv_files(folder_path)
-        if not file_paths:
-            print(f"[{filter_key}] 警告: 未找到CSV文件")
-            return
-    except FileNotFoundError as e:
-        print(f"[{filter_key}] 错误: {e}")
-        return
-
-    # 多线程处理文件
-    with ThreadPoolExecutor(max_workers=file_processing_workers) as executor:
-        results = list(executor.map(lambda fp: _process_file(fp, filter_key), file_paths))
-
-    # 过滤空DataFrame并合并所有结果
-    non_empty_results = [df for df in results if not df.empty]
-    if not non_empty_results:
-        print(f"[{filter_key}] 警告: 未找到匹配的数据，跳过导出")
-        return
-
-    final_df = pd.concat(non_empty_results, axis=0, ignore_index=True)
-
     # 分割DataFrame到多个工作表
     sheets = split_dataframe_to_sheets(final_df, max_rows_per_sheet)
     if not sheets:
