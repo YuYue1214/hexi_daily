@@ -29,8 +29,10 @@ file_processing_workers = 4  # 文件处理的线程数
 # 定义多个导出任务：每个任务包含 (filter_key, output_filename)
 EXPORT_TASKS: List[Tuple[str, str]] = [
     ("赫系官方旗舰店", "旗舰店.xlsx"),
-    ("赫系护发精选", "赫系护发精选.xlsx"),
-    ("赫系洗护精选", "赫系洗护精选.xlsx"),
+    # ("赫系洗护优选", "赫系洗护优选.xlsx"),
+    ("赫系护发星品", "护发星品.xlsx"),
+    # ('赫系洗护精选', '精选.xlsx'),
+    ('赫系精选直播间', '净澈.xlsx'),
 ]
 
 def _get_csv_files(folder: str) -> List[str]:

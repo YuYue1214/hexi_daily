@@ -3,12 +3,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 
-folder_path = r"D:\monthly\hexi_timeframe"
+folder_path = r"D:\monthly\hexi_history"
 chunk_size = 50000  # 分块读取大小
 file_processing_workers = 4  # 文件处理的线程数
 
 # 只读取需要的列
-required_columns = ['订单提交时间', '订单应付金额', '售后状态', '取消原因']
+required_columns = ['订单提交时间', '订单应付金额', '售后状态', '取消原因', '达人昵称']
+
+# 过滤的直播间名称
+filter_live_room = '赫系护发精选'
 
 
 def _get_file_paths() -> list:
@@ -168,10 +171,18 @@ def _filtering(dfs) -> list:
     """
     过滤有效订单
     去除"售后状态"和"取消原因"这两个字段当中有值的数据
+    同时过滤出指定直播间（赫系护发精选）的数据
     :return:
     """
     fdfs = []
     for df in dfs:
+        # 过滤指定直播间
+        if '达人昵称' in df.columns:
+            live_room_mask = df['达人昵称'] == filter_live_room
+        else:
+            print("警告：数据中缺少'达人昵称'列，跳过直播间过滤")
+            live_room_mask = pd.Series([True] * len(df), index=df.index)
+        
         # 售后状态为空或为"-"
         after_sale_mask = (
                 df['售后状态'].isna() |
@@ -183,8 +194,8 @@ def _filtering(dfs) -> list:
                 df['取消原因'].isna() |
                 (df['取消原因'] == '')
         )
-        # 两个条件都满足的数据才是有效订单
-        valid_mask = after_sale_mask & cancel_mask
+        # 所有条件都满足的数据才是有效订单
+        valid_mask = live_room_mask & after_sale_mask & cancel_mask
         filtered_df = df[valid_mask]
         fdfs.append(filtered_df)
     return fdfs
@@ -192,8 +203,8 @@ def _filtering(dfs) -> list:
 
 def _get_date_timeframe(dt):
     """
-    获取日期和时段标识（10分钟间隔）
-    例如：日期 "2025-11-14", 时段 "06:00-06:10"
+    获取日期和时段标识（5分钟间隔）
+    例如：日期 "2025-11-14", 时段 "06:00-06:05"
     """
     if dt is None:
         return None, None
@@ -205,9 +216,9 @@ def _get_date_timeframe(dt):
     hour = dt.hour
     minute = dt.minute
 
-    # 计算10分钟间隔的起始分钟
-    start_minute = (minute // 10) * 10
-    end_minute = start_minute + 10
+    # 计算5分钟间隔的起始分钟
+    start_minute = (minute // 5) * 5
+    end_minute = start_minute + 5
 
     start_time = f"{hour:02d}:{start_minute:02d}"
     if end_minute >= 60:
@@ -255,7 +266,8 @@ def _calculate_timeframe(df):
     timeframe_stats['时段排序键'] = timeframe_stats['时段'].apply(
         lambda x: int(x.split(':')[0]) * 60 + int(x.split('-')[0].split(':')[1])
     )
-    timeframe_stats = timeframe_stats.sort_values(['日期排序键', '时段排序键']).drop(['日期排序键', '时段排序键'], axis=1)
+    timeframe_stats = timeframe_stats.sort_values(['日期排序键', '时段排序键']).drop(['日期排序键', '时段排序键'],
+                                                                                     axis=1)
 
     return timeframe_stats
 
@@ -277,7 +289,7 @@ def timeframe() -> None:
     timeframe_stats = _calculate_timeframe(merged_df)
 
     # 生成输出文件路径
-    output_filename = "时段统计.xlsx"
+    output_filename = f"时段统计_{filter_live_room}.xlsx"
     output_path = os.path.join(os.path.dirname(folder_path), output_filename)
 
     # 保存到Excel
