@@ -32,8 +32,10 @@ EXPORT_TASKS: List[Tuple[str, str]] = [
     # ("赫系洗护优选", "赫系洗护优选.xlsx"),
     ("赫系护发星品", "护发星品.xlsx"),
     # ('赫系洗护精选', '精选.xlsx'),
-    ('赫系精选直播间', '净澈.xlsx'),
+    # ('赫系精选直播间', '净澈.xlsx'),
+    # ('赫系护发精选', '护发精选.xlsx'),
 ]
+
 
 def _get_csv_files(folder: str) -> List[str]:
     """
@@ -303,6 +305,8 @@ def _merge_and_save(filter_key: str, output_filename: str, all_chunks: List[List
         return
 
     final_df = pd.concat(chunks_to_concat, axis=0, ignore_index=True)
+    if "地址修改时段" in final_df.columns:
+        final_df = final_df.drop(columns=["地址修改时段"])
 
     # 分割DataFrame到多个工作表
     sheets = split_dataframe_to_sheets(final_df, max_rows_per_sheet)
@@ -322,7 +326,7 @@ def _merge_and_save(filter_key: str, output_filename: str, all_chunks: List[List
 
         print(f"[{filter_key}] 执行完成，文件已保存到: {output_path}，总行数: {len(final_df)}")
 
-        # 自动发送文件到飞书群聊
+        # 自动发送文件到飞书群聊 #TODO 月数据太大无法发送 直接注释掉这行 然后手动发送即可
         _send_file_to_feishu(output_path, filter_key)
 
     except Exception as e:
