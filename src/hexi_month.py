@@ -1,3 +1,5 @@
+# 赫系月数据导出 yy
+
 import math
 import os
 import shutil
@@ -19,7 +21,7 @@ from ext.feishu.retry import retry_feishu_api
 from src import get_config
 
 # 配置常量
-folder_path = r"D:\monthly\hexi"
+folder_path = r"D:\monthly\hexi_history"
 history_folder_path = r"D:\monthly\hexi_history"  # 历史文件存储路径
 timeframe_folder_path = r"D:\monthly\hexi_timeframe"  # 生成的Excel文件存储路径
 chunk_size = 50000
@@ -28,9 +30,9 @@ file_processing_workers = 4  # 文件处理的线程数
 
 # 定义多个导出任务：每个任务包含 (filter_key, output_filename)
 EXPORT_TASKS: List[Tuple[str, str]] = [
-    ("赫系官方旗舰店", "旗舰店.xlsx"),
+    # ("赫系官方旗舰店", "旗舰店.xlsx"),
     # ("赫系洗护优选", "赫系洗护优选.xlsx"),
-    ("赫系护发星品", "护发星品.xlsx"),
+    # ("赫系护发星品", "护发星品.xlsx"),
     # ('赫系洗护精选', '精选.xlsx'),
     # ('赫系精选直播间', '净澈.xlsx'),
     ('赫系护发精选', '护发精选.xlsx'),
@@ -326,8 +328,8 @@ def _merge_and_save(filter_key: str, output_filename: str, all_chunks: List[List
 
         print(f"[{filter_key}] 执行完成，文件已保存到: {output_path}，总行数: {len(final_df)}")
 
-        # 自动发送文件到飞书群聊 #TODO 月数据太大无法发送 直接注释掉这行 然后手动发送即可
-        _send_file_to_feishu(output_path, filter_key)
+        # # 自动发送文件到飞书群聊 #TODO 月数据太大无法发送 直接注释掉这行 然后手动发送即可
+        # _send_file_to_feishu(output_path, filter_key)
 
     except Exception as e:
         print(f"[{filter_key}] 写入Excel文件失败: {e}")
@@ -400,17 +402,17 @@ def do_merge_concurrent() -> None:
 
     print(f"所有导出任务已完成！成功: {completed_count}, 失败: {failed_count}")
 
-    # 第四阶段：文件管理
-    # 只有当所有任务都成功完成时，才移动CSV文件和Excel文件
-    if failed_count == 0 and completed_count > 0:
-        print("\n开始文件管理...")
-        # 移动CSV文件到历史文件夹
-        _move_csv_files_to_history()
-        # 移动导出的Excel文件到hexi_timeframe文件夹
-        _move_exported_excel_files()
-        print("文件管理完成")
-    else:
-        print(f"\n由于有任务失败（成功: {completed_count}, 失败: {failed_count}），跳过文件管理操作")
+    # # 第四阶段：文件管理
+    # # 只有当所有任务都成功完成时，才移动CSV文件和Excel文件
+    # if failed_count == 0 and completed_count > 0:
+    #     print("\n开始文件管理...")
+    #     # 移动CSV文件到历史文件夹
+    #     _move_csv_files_to_history()
+    #     # 移动导出的Excel文件到hexi_timeframe文件夹
+    #     _move_exported_excel_files()
+    #     print("文件管理完成")
+    # else:
+    #     print(f"\n由于有任务失败（成功: {completed_count}, 失败: {failed_count}），跳过文件管理操作")
 
 
 if __name__ == '__main__':
